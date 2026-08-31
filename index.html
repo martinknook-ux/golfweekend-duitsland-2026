@@ -72,30 +72,40 @@
       <div class="panel">
         <div class="section-head">
           <div>
-            <div class="eyebrow">Live stand</div>
-            <h2>Weekendklassement</h2>
+            <div class="eyebrow">Uitslagen</div>
+            <h2>Gepubliceerde klassementen</h2>
           </div>
           <button id="refreshLeaderboardBtn" class="secondary small">Vernieuwen</button>
         </div>
+        <p class="muted small-text">De wedstrijdleiding bepaalt wanneer een daguitslag en het weekendklassement zichtbaar worden.</p>
 
-        <div id="dayWinners" class="winner-grid"></div>
+        <div id="leaderboardNotice" class="publish-notice"></div>
 
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Speler</th>
-                <th>Jakobsberg</th>
-                <th>Bitburg</th>
-                <th>Lüderich</th>
-                <th>Totaal</th>
-              </tr>
-            </thead>
-            <tbody id="leaderboardBody"></tbody>
-          </table>
-        </div>
-        <p class="muted small-text">Een ingeleverde kaart telt direct mee. Een groen vinkje betekent dat de wedstrijdleiding de kaart heeft gecontroleerd.</p>
+        <div id="dayLeaderboardSections" class="day-leaderboards"></div>
+
+        <section id="overallLeaderboardSection" class="leaderboard-section hidden">
+          <div class="section-head compact-head">
+            <div>
+              <div class="eyebrow">Totaal over 3 dagen</div>
+              <h3>Weekendklassement</h3>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Speler</th>
+                  <th>Jakobsberg</th>
+                  <th>Bitburg</th>
+                  <th>Lüderich</th>
+                  <th>Totaal</th>
+                </tr>
+              </thead>
+              <tbody id="leaderboardBody"></tbody>
+            </table>
+          </div>
+        </section>
       </div>
     </section>
 
@@ -122,6 +132,16 @@
             <button id="adminRefreshBtn" class="secondary small">Vernieuwen</button>
             <button id="adminLogoutBtn" class="secondary small">Uitloggen</button>
           </div>
+        </div>
+
+        <div class="publication-box">
+          <div>
+            <div class="eyebrow">Publicatie</div>
+            <h3>Klassement zichtbaar maken</h3>
+            <p class="muted small-text">Publiceer een dag pas wanneer jullie de uitslag willen delen. Het weekendklassement kan apart worden gepubliceerd.</p>
+          </div>
+          <div id="publicationControls" class="publication-controls"></div>
+          <p id="publicationMessage" class="message" aria-live="polite"></p>
         </div>
 
         <div class="admin-filter">

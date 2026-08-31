@@ -11,7 +11,8 @@ const state = {
   holes: new Map(),
   activeRound: null,
   admin: false,
-  adminEditor: null
+  adminEditor: null,
+  publication: { day1:false, day2:false, day3:false, overall:false }
 };
 
 const $ = (id) => document.getElementById(id);
@@ -255,47 +256,162 @@ async function submitActiveRound() {
   setMessage($('roundMessage'), 'Kaart ingeleverd. De score telt nu mee in het klassement.', 'ok');
 }
 
-async function loadLeaderboard() {
+async function loadPublication() {
   const { data, error } = await supabase
-    .from('rounds')
-    .select('id,player_id,course_id,stableford_total,gross_total,status,approved,players(name),courses(day,name)')
-    .in('status', ['submitted','approved']);
-  if (error) {
-    $('leaderboardBody').innerHTML = `<tr><td colspan="6">${esc(error.message)}</td></tr>`;
+    .from('leaderboard_publication')
+    .select('scope,published');
+
+  if (error) throw error;
+
+  state.publication = { day1:false, day2:false, day3:false, overall:false };
+  for (const row of data || []) state.publication[row.scope] = !!row.published;
+}
+
+async function loadLeaderboard() {
+  try {
+    await loadPublication();
+  } catch (err) {
+    $('leaderboardNotice').textContent = `Publicatiestatus kon niet worden geladen: ${err.message}`;
     return;
   }
 
-  const map = new Map();
-  for (const p of state.players) map.set(p.id, { name:p.name, days:[null,null,null], approved:[false,false,false] });
-  for (const r of data) {
-    const item = map.get(r.player_id);
-    if (!item) continue;
-    const idx = Number(r.courses.day) - 1;
-    item.days[idx] = Number(r.stableford_total || 0);
-    item.approved[idx] = !!r.approved;
+  const { data, error } = await supabase
+    .from('rounds')
+    .select('id,player_id,course_id,stableford_total,gross_total,status,approved,players(name),courses(day,name,short_name)')
+    .in('status', ['submitted','approved']);
+
+  if (error) {
+    $('leaderboardNotice').textContent = error.message;
+    return;
   }
 
-  const rows = [...map.values()].map(x => ({
-    ...x,
-    total: x.days.reduce((sum,v) => sum + (v ?? 0), 0),
-    played: x.days.filter(v => v !== null).length
-  })).sort((a,b) => b.total - a.total || b.played - a.played || a.name.localeCompare(b.name));
+  const anyPublished = state.admin || Object.values(state.publication).some(Boolean);
+  $('leaderboardNotice').textContent = anyPublished
+    ? ''
+    : 'Er is nog geen klassement gepubliceerd.';
 
-  $('leaderboardBody').innerHTML = rows.map((r,i) => `
-    <tr>
-      <td>${i+1}</td>
-      <td>${esc(r.name)}</td>
-      ${r.days.map((v,idx) => `<td>${v === null ? '−' : `${v}${r.approved[idx] ? ' ✓' : ''}`}</td>`).join('')}
-      <td><strong>${r.total}</strong></td>
-    </tr>`).join('');
+  const dayContainer = $('dayLeaderboardSections');
+  dayContainer.innerHTML = '';
 
-  $('dayWinners').innerHTML = [1,2,3].map(day => {
-    const candidates = data.filter(r => Number(r.courses.day) === day);
-    if (!candidates.length) return `<div class="winner"><div class="day">Dag ${day}</div><div class="name">Nog geen uitslag</div></div>`;
-    const max = Math.max(...candidates.map(r => Number(r.stableford_total || 0)));
-    const names = candidates.filter(r => Number(r.stableford_total || 0) === max).map(r => r.players.name).join(', ');
-    return `<div class="winner"><div class="day">Dag ${day} · ${esc(state.courses.find(c => Number(c.day) === day)?.short_name || '')}</div><div class="name">${esc(names)}</div><div class="score">${max} Stablefordpunten</div></div>`;
+  for (const day of [1,2,3]) {
+    const scope = `day${day}`;
+    const visible = state.admin || state.publication[scope];
+    if (!visible) continue;
+
+    const course = state.courses.find(c => Number(c.day) === day);
+    const candidates = (data || [])
+      .filter(r => Number(r.courses.day) === day)
+      .sort((a,b) => Number(b.stableford_total || 0) - Number(a.stableford_total || 0)
+        || Number(a.gross_total || 999) - Number(b.gross_total || 999)
+        || a.players.name.localeCompare(b.players.name));
+
+    const max = candidates.length ? Math.max(...candidates.map(r => Number(r.stableford_total || 0))) : null;
+    const winners = max === null ? '' : candidates.filter(r => Number(r.stableford_total || 0) === max).map(r => r.players.name).join(', ');
+
+    const section = document.createElement('section');
+    section.className = 'leaderboard-section';
+    section.innerHTML = `
+      <div class="day-result-head">
+        <div>
+          <div class="eyebrow">Dag ${day}</div>
+          <h3>${esc(course?.name || '')}</h3>
+        </div>
+        ${max === null
+          ? '<span class="day-winner-pill">Nog geen uitslag</span>'
+          : `<span class="day-winner-pill">Dagwinnaar: ${esc(winners)} · ${max} pt</span>`}
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Speler</th><th>Stableford</th><th>Bruto</th><th>Controle</th></tr></thead>
+          <tbody>
+            ${candidates.length ? candidates.map((r,i) => `
+              <tr>
+                <td>${i+1}</td>
+                <td>${esc(r.players.name)}</td>
+                <td><strong>${Number(r.stableford_total || 0)}</strong></td>
+                <td>${Number(r.gross_total || 0)}</td>
+                <td>${r.approved ? '✓' : '−'}</td>
+              </tr>`).join('') : '<tr><td colspan="5">Nog geen ingeleverde kaarten.</td></tr>'}
+          </tbody>
+        </table>
+      </div>`;
+    dayContainer.appendChild(section);
+  }
+
+  const overallVisible = state.admin || state.publication.overall;
+  $('overallLeaderboardSection').classList.toggle('hidden', !overallVisible);
+
+  if (overallVisible) {
+    const map = new Map();
+    for (const p of state.players) map.set(p.id, { name:p.name, days:[null,null,null], approved:[false,false,false] });
+    for (const r of data || []) {
+      const item = map.get(r.player_id);
+      if (!item) continue;
+      const idx = Number(r.courses.day) - 1;
+      item.days[idx] = Number(r.stableford_total || 0);
+      item.approved[idx] = !!r.approved;
+    }
+
+    const rows = [...map.values()].map(x => ({
+      ...x,
+      total: x.days.reduce((sum,v) => sum + (v ?? 0), 0),
+      played: x.days.filter(v => v !== null).length
+    })).sort((a,b) => b.total - a.total || b.played - a.played || a.name.localeCompare(b.name));
+
+    $('leaderboardBody').innerHTML = rows.map((r,i) => `
+      <tr>
+        <td>${i+1}</td>
+        <td>${esc(r.name)}</td>
+        ${r.days.map((v,idx) => `<td>${v === null ? '−' : `${v}${r.approved[idx] ? ' ✓' : ''}`}</td>`).join('')}
+        <td><strong>${r.total}</strong></td>
+      </tr>`).join('');
+  }
+
+  if (state.admin) renderPublicationControls();
+}
+
+function renderPublicationControls() {
+  const labels = {
+    day1: 'Dag 1 · Jakobsberg',
+    day2: 'Dag 2 · Bitburg',
+    day3: 'Dag 3 · Lüderich',
+    overall: 'Weekendklassement'
+  };
+
+  $('publicationControls').innerHTML = Object.entries(labels).map(([scope,label]) => {
+    const published = !!state.publication[scope];
+    return `
+      <div class="publish-control">
+        <strong>${esc(label)}</strong>
+        <span>${published ? 'Zichtbaar voor alle spelers' : 'Alleen zichtbaar voor wedstrijdleiding'}</span>
+        <button type="button" class="${published ? 'secondary' : 'primary'} small publication-toggle"
+          data-scope="${scope}" data-value="${published ? 'false' : 'true'}">
+          ${published ? 'Verbergen' : 'Publiceren'}
+        </button>
+      </div>`;
   }).join('');
+
+  $('publicationControls').querySelectorAll('.publication-toggle').forEach(btn => {
+    btn.addEventListener('click', () => setPublication(btn.dataset.scope, btn.dataset.value === 'true'));
+  });
+}
+
+async function setPublication(scope, published) {
+  setMessage($('publicationMessage'), published ? 'Publiceren...' : 'Verbergen...');
+  const { error } = await supabase.rpc('admin_set_publication', {
+    p_scope: scope,
+    p_published: published
+  });
+  if (error) {
+    setMessage($('publicationMessage'), error.message, 'error');
+    return;
+  }
+  await loadLeaderboard();
+  setMessage(
+    $('publicationMessage'),
+    published ? 'Klassement is gepubliceerd.' : 'Klassement is weer verborgen.',
+    'ok'
+  );
 }
 
 async function adminLogin() {
@@ -311,6 +427,7 @@ async function adminLogin() {
   $('adminPanel').classList.remove('hidden');
   setMessage($('adminLoginMessage'), '');
   await loadAdminCards();
+  await loadLeaderboard();
 }
 
 async function adminLogout() {
@@ -321,6 +438,7 @@ async function adminLogout() {
   $('adminEditorPanel').classList.add('hidden');
   $('adminLoginPanel').classList.remove('hidden');
   $('adminPinInput').value = '';
+  $('publicationControls').innerHTML = '';
 }
 
 async function loadAdminCards() {
@@ -467,6 +585,7 @@ async function init() {
 
     supabase.channel('leaderboard-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'rounds' }, () => loadLeaderboard())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leaderboard_publication' }, () => loadLeaderboard())
       .subscribe();
   } catch (err) {
     console.error(err);
