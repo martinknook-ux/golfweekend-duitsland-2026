@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#173b2b">
+  <title>Golfweekend Duitsland 2026</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <div class="eyebrow">Stableford · 3 dagen · 11 spelers</div>
+      <h1>Golfweekend Duitsland 2026</h1>
+    </div>
+    <div id="connectionBadge" class="badge">Verbinden...</div>
+  </header>
+
+  <nav class="tabs" aria-label="Hoofdnavigatie">
+    <button class="tab active" data-tab="score">Scorekaart</button>
+    <button class="tab" data-tab="leaderboard">Klassement</button>
+    <button class="tab" data-tab="admin">Wedstrijdleiding</button>
+  </nav>
+
+  <main>
+    <section id="tab-score" class="tab-panel active">
+      <div class="panel">
+        <h2>Nieuwe of bestaande ronde</h2>
+        <div class="form-grid">
+          <label>Speler
+            <select id="playerSelect"></select>
+          </label>
+          <label>Speeldag
+            <select id="courseSelect"></select>
+          </label>
+          <label>Actuele Handicap Index
+            <input id="handicapInput" type="number" inputmode="decimal" step="0.1" min="-10" max="54" placeholder="bijv. 14,3">
+          </label>
+        </div>
+        <div id="courseInfo" class="course-info"></div>
+        <div class="actions">
+          <button id="startRoundBtn" class="primary">Scorekaart openen</button>
+        </div>
+        <p id="setupMessage" class="message" aria-live="polite"></p>
+      </div>
+
+      <div id="scoreCardPanel" class="panel hidden">
+        <div class="score-header">
+          <div>
+            <div id="roundMeta" class="eyebrow"></div>
+            <h2 id="roundTitle"></h2>
+            <div id="roundHcp" class="muted"></div>
+          </div>
+          <div class="summary">
+            <div><span>Stableford</span><strong id="sumPoints">0</strong></div>
+            <div><span>Bruto</span><strong id="sumGross">0</strong></div>
+            <div><span>Holes</span><strong id="sumHoles">0/18</strong></div>
+          </div>
+        </div>
+
+        <div id="holesGrid" class="holes-grid"></div>
+
+        <div class="actions sticky-actions">
+          <button id="submitRoundBtn" class="primary">Kaart inleveren</button>
+          <button id="closeRoundBtn" class="secondary">Sluiten</button>
+        </div>
+        <p id="roundMessage" class="message" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <section id="tab-leaderboard" class="tab-panel">
+      <div class="panel">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">Live stand</div>
+            <h2>Weekendklassement</h2>
+          </div>
+          <button id="refreshLeaderboardBtn" class="secondary small">Vernieuwen</button>
+        </div>
+
+        <div id="dayWinners" class="winner-grid"></div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Speler</th>
+                <th>Jakobsberg</th>
+                <th>Bitburg</th>
+                <th>Lüderich</th>
+                <th>Totaal</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboardBody"></tbody>
+          </table>
+        </div>
+        <p class="muted small-text">Een ingeleverde kaart telt direct mee. Een groen vinkje betekent dat de wedstrijdleiding de kaart heeft gecontroleerd.</p>
+      </div>
+    </section>
+
+    <section id="tab-admin" class="tab-panel">
+      <div id="adminLoginPanel" class="panel">
+        <h2>Wedstrijdleiding</h2>
+        <p>Voor Arend Heijna en Martin Knook.</p>
+        <label>Wedstrijdleiding PIN
+          <input id="adminPinInput" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN">
+        </label>
+        <div class="actions">
+          <button id="adminLoginBtn" class="primary">Inloggen</button>
+        </div>
+        <p id="adminLoginMessage" class="message" aria-live="polite"></p>
+      </div>
+
+      <div id="adminPanel" class="panel hidden">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">Wedstrijdleiding</div>
+            <h2>Alle scorekaarten</h2>
+          </div>
+          <div class="actions compact">
+            <button id="adminRefreshBtn" class="secondary small">Vernieuwen</button>
+            <button id="adminLogoutBtn" class="secondary small">Uitloggen</button>
+          </div>
+        </div>
+
+        <div class="admin-filter">
+          <label>Dag
+            <select id="adminCourseFilter">
+              <option value="all">Alle dagen</option>
+            </select>
+          </label>
+        </div>
+
+        <div id="adminCards" class="admin-cards"></div>
+      </div>
+
+      <div id="adminEditorPanel" class="panel hidden">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">Kaart beheren</div>
+            <h2 id="adminEditorTitle"></h2>
+            <div id="adminEditorMeta" class="muted"></div>
+          </div>
+          <button id="adminEditorCloseBtn" class="secondary small">Sluiten</button>
+        </div>
+
+        <div class="form-grid">
+          <label>Handicap Index
+            <input id="adminHandicapInput" type="number" inputmode="decimal" step="0.1" min="-10" max="54">
+          </label>
+        </div>
+        <div class="actions">
+          <button id="adminStartOrUpdateBtn" class="secondary">Kaart aanmaken / handicap bijwerken</button>
+        </div>
+
+        <div id="adminHolesGrid" class="holes-grid"></div>
+
+        <div class="actions">
+          <button id="adminSubmitBtn" class="secondary">Markeer ingeleverd</button>
+          <button id="adminApproveBtn" class="primary">Goedkeuren</button>
+          <button id="adminReopenBtn" class="secondary">Heropenen</button>
+        </div>
+        <p id="adminEditorMessage" class="message" aria-live="polite"></p>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
