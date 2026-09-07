@@ -12,7 +12,9 @@ const state = {
   activeRound: null,
   admin: false,
   adminEditor: null,
-  publication: { day1:false, day2:false, day3:false, overall:false }
+  publication: { day1:false, day2:false, day3:false, overall:false },
+  photoCategory: 'day1',
+  photos: []
 };
 
 const $ = (id) => document.getElementById(id);
@@ -77,6 +79,7 @@ async function loadReferenceData() {
   }
 
   $('playerSelect').innerHTML = state.players.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
+  $('photoPlayerSelect').innerHTML = state.players.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
   $('courseSelect').innerHTML = state.courses.map(c => `<option value="${c.id}">Dag ${c.day} - ${esc(c.name)}</option>`).join('');
   $('adminCourseFilter').innerHTML = '<option value="all">Alle dagen</option>' + state.courses.map(c => `<option value="${c.id}">Dag ${c.day} - ${esc(c.short_name || c.name)}</option>`).join('');
   updateCourseInfo();
@@ -92,6 +95,7 @@ function switchTab(name) {
   document.querySelectorAll('.tab').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === name));
   document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.toggle('active', panel.id === `tab-${name}`));
   if (name === 'leaderboard') loadLeaderboard();
+  if (name === 'photos') loadPhotos();
   if (name === 'admin' && state.admin) loadAdminCards();
 }
 
@@ -255,6 +259,282 @@ async function submitActiveRound() {
   await loadRound(r.id, false);
   setMessage($('roundMessage'), 'Kaart ingeleverd. De score telt nu mee in het klassement.', 'ok');
 }
+
+
+const PHOTO_MAX_ORIGINAL_BYTES = 10 * 1024 * 1024;
+const PHOTO_MAX_EDGE = 1600;
+const PHOTO_JPEG_QUALITY = 0.82;
+
+function photoCategoryLabel(category) {
+  return {
+    day1: 'Dag 1 · Jakobsberg',
+    day2: 'Dag 2 · Bitburg',
+    day3: 'Dag 3 · Lüderich',
+    classics: 'Klassiekers'
+  }[category] || category;
+}
+
+async function decodePhoto(file) {
+  const lower = file.name.toLowerCase();
+  const isHeic =
+    file.type === 'image/heic' ||
+    file.type === 'image/heif' ||
+    lower.endsWith('.heic') ||
+    lower.endsWith('.heif');
+
+  let sourceFile = file;
+
+  if (isHeic) {
+    try {
+      const mod = await import('https://cdn.jsdelivr.net/npm/heic2any@0.0.4/+esm');
+      const converted = await mod.default({ blob: file, toType: 'image/jpeg', quality: 0.9 });
+      sourceFile = Array.isArray(converted) ? converted[0] : converted;
+    } catch (err) {
+      throw new Error('Deze HEIC-foto kon niet worden omgezet. Probeer de foto als JPEG op te slaan.');
+    }
+  }
+
+  if ('createImageBitmap' in window) {
+    try {
+      return await createImageBitmap(sourceFile, { imageOrientation: 'from-image' });
+    } catch (_) {}
+  }
+
+  const url = URL.createObjectURL(sourceFile);
+  try {
+    const img = new Image();
+    const loaded = new Promise((resolve, reject) => {
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('De foto kon niet worden gelezen.'));
+    });
+    img.src = url;
+    return await loaded;
+  } finally {
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+}
+
+async function compressPhoto(file) {
+  if (!file) throw new Error('Kies eerst een foto.');
+  if (file.size > PHOTO_MAX_ORIGINAL_BYTES) throw new Error('Deze foto is groter dan 10 MB.');
+  if (file.type && !file.type.startsWith('image/') && !/\.(heic|heif)$/i.test(file.name)) {
+    throw new Error('Alleen foto\'s zijn toegestaan.');
+  }
+
+  const image = await decodePhoto(file);
+  const width = image.width || image.naturalWidth;
+  const height = image.height || image.naturalHeight;
+  if (!width || !height) throw new Error('De foto-afmetingen konden niet worden gelezen.');
+
+  const scale = Math.min(1, PHOTO_MAX_EDGE / Math.max(width, height));
+  const outW = Math.max(1, Math.round(width * scale));
+  const outH = Math.max(1, Math.round(height * scale));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = outW;
+  canvas.height = outH;
+  const ctx = canvas.getContext('2d', { alpha: false });
+  ctx.drawImage(image, 0, 0, outW, outH);
+  if (image.close) image.close();
+
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', PHOTO_JPEG_QUALITY));
+  if (!blob) throw new Error('De foto kon niet worden gecomprimeerd.');
+  return blob;
+}
+
+function setPhotoCategory(category) {
+  state.photoCategory = category;
+  document.querySelectorAll('.photo-category').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.photoCategory === category);
+  });
+  $('photoUploadHeading').textContent = photoCategoryLabel(category);
+  loadPhotos();
+}
+
+async function loadPhotos() {
+  const { data, error } = await supabase
+    .from('photos')
+    .select('id,category,caption,storage_path,created_at,player_id,players(name)')
+    .eq('category', state.photoCategory)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    $('photoGallery').innerHTML = '';
+    $('photoEmptyState').classList.remove('hidden');
+    $('photoEmptyState').textContent = error.message;
+    return;
+  }
+
+  const photos = data || [];
+  state.photos = photos;
+  $('photoEmptyState').classList.toggle('hidden', photos.length > 0);
+  $('photoEmptyState').textContent = 'Nog geen foto\'s in deze categorie.';
+
+  const rendered = [];
+  for (const photo of photos) {
+    const { data: signed, error: signedError } = await supabase.storage
+      .from('golf-fotos')
+      .createSignedUrl(photo.storage_path, 60 * 60);
+    if (!signedError && signed?.signedUrl) rendered.push({ ...photo, url: signed.signedUrl });
+  }
+
+  $('photoGallery').innerHTML = rendered.map(photo => `
+    <article class="photo-item">
+      <button class="photo-open" type="button"
+        data-url="${esc(photo.url)}"
+        data-title="${esc(photo.players?.name || 'Onbekend')}"
+        data-caption="${esc(photo.caption || '')}">
+        <img src="${esc(photo.url)}" loading="lazy"
+          alt="${esc(photo.caption || `Foto van ${photo.players?.name || 'deelnemer'}`)}">
+      </button>
+      <div class="photo-meta">
+        <strong>${esc(photo.players?.name || 'Onbekend')}</strong>
+        ${photo.caption ? `<span>${esc(photo.caption)}</span>` : ''}
+      </div>
+    </article>`).join('');
+
+  $('photoGallery').querySelectorAll('.photo-open').forEach(btn => {
+    btn.addEventListener('click', () => openPhotoLightbox(
+      btn.dataset.url,
+      btn.dataset.title,
+      btn.dataset.caption
+    ));
+  });
+
+  if (state.admin) loadAdminPhotoList();
+}
+
+async function uploadPhoto() {
+  const file = $('photoFileInput').files?.[0];
+  const playerId = $('photoPlayerSelect').value;
+  const caption = $('photoCaptionInput').value.trim();
+
+  if (!playerId) return setMessage($('photoUploadMessage'), 'Kies je naam.', 'error');
+  if (!file) return setMessage($('photoUploadMessage'), 'Kies eerst een foto.', 'error');
+
+  $('photoUploadBtn').disabled = true;
+  $('photoUploadProgress').classList.remove('hidden');
+  $('photoUploadProgressBar').style.width = '12%';
+  setMessage($('photoUploadMessage'), 'Foto voorbereiden...');
+
+  let storagePath = null;
+
+  try {
+    const compressed = await compressPhoto(file);
+    $('photoUploadProgressBar').style.width = '45%';
+
+    storagePath = `${state.photoCategory}/${playerId}/${Date.now()}-${crypto.randomUUID()}.jpg`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('golf-fotos')
+      .upload(storagePath, compressed, {
+        contentType: 'image/jpeg',
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (uploadError) throw uploadError;
+
+    $('photoUploadProgressBar').style.width = '78%';
+
+    const { error: rowError } = await supabase.from('photos').insert({
+      category: state.photoCategory,
+      player_id: playerId,
+      caption: caption || null,
+      storage_path: storagePath,
+      uploaded_by_user_id: state.user?.id || null
+    });
+
+    if (rowError) throw rowError;
+
+    $('photoUploadProgressBar').style.width = '100%';
+    $('photoFileInput').value = '';
+    $('photoCaptionInput').value = '';
+    setMessage($('photoUploadMessage'), 'Foto toegevoegd.', 'ok');
+    await loadPhotos();
+  } catch (err) {
+    if (storagePath) {
+      try { await supabase.storage.from('golf-fotos').remove([storagePath]); } catch (_) {}
+    }
+    setMessage($('photoUploadMessage'), err.message, 'error');
+  } finally {
+    setTimeout(() => {
+      $('photoUploadProgress').classList.add('hidden');
+      $('photoUploadProgressBar').style.width = '0';
+    }, 500);
+    $('photoUploadBtn').disabled = false;
+  }
+}
+
+function openPhotoLightbox(url, title, caption) {
+  $('photoLightboxImage').src = url;
+  $('photoLightboxImage').alt = caption || `Foto van ${title}`;
+  $('photoLightboxTitle').textContent = title || '';
+  $('photoLightboxCaption').textContent = caption || '';
+  $('photoLightbox').classList.remove('hidden');
+}
+
+function closePhotoLightbox() {
+  $('photoLightbox').classList.add('hidden');
+  $('photoLightboxImage').src = '';
+}
+
+async function loadAdminPhotoList() {
+  if (!state.admin) return;
+
+  const { data, error } = await supabase
+    .from('photos')
+    .select('id,category,caption,storage_path,created_at,players(name)')
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  if (error) {
+    $('adminPhotoList').innerHTML = `<p class="muted">${esc(error.message)}</p>`;
+    return;
+  }
+
+  const rows = [];
+  for (const photo of data || []) {
+    const { data: signed } = await supabase.storage
+      .from('golf-fotos')
+      .createSignedUrl(photo.storage_path, 60 * 30);
+    rows.push({ ...photo, url: signed?.signedUrl || '' });
+  }
+
+  $('adminPhotoList').innerHTML = rows.length ? rows.map(photo => `
+    <div class="admin-photo-row">
+      ${photo.url ? `<img src="${esc(photo.url)}" alt="">` : '<div></div>'}
+      <div>
+        <strong>${esc(photo.players?.name || 'Onbekend')}</strong>
+        <span>${esc(photoCategoryLabel(photo.category))}${photo.caption ? ` · ${esc(photo.caption)}` : ''}</span>
+      </div>
+      <button class="secondary small admin-photo-delete" type="button"
+        data-id="${esc(photo.id)}" data-path="${esc(photo.storage_path)}">Verwijderen</button>
+    </div>`).join('') : '<p class="muted small-text">Nog geen foto\'s geüpload.</p>';
+
+  $('adminPhotoList').querySelectorAll('.admin-photo-delete').forEach(btn => {
+    btn.addEventListener('click', () => deletePhotoAsAdmin(btn.dataset.id, btn.dataset.path));
+  });
+}
+
+async function deletePhotoAsAdmin(id, storagePath) {
+  if (!confirm('Deze foto verwijderen?')) return;
+  setMessage($('adminPhotoMessage'), 'Foto verwijderen...');
+
+  const { error: rowError } = await supabase.from('photos').delete().eq('id', id);
+  if (rowError) return setMessage($('adminPhotoMessage'), rowError.message, 'error');
+
+  const { error: storageError } = await supabase.storage.from('golf-fotos').remove([storagePath]);
+  if (storageError) {
+    setMessage($('adminPhotoMessage'), `Foto uit overzicht verwijderd. Storage-melding: ${storageError.message}`, 'error');
+  } else {
+    setMessage($('adminPhotoMessage'), 'Foto verwijderd.', 'ok');
+  }
+
+  await loadAdminPhotoList();
+  await loadPhotos();
+}
+
 
 async function loadPublication() {
   const { data, error } = await supabase
@@ -428,6 +708,7 @@ async function adminLogin() {
   setMessage($('adminLoginMessage'), '');
   await loadAdminCards();
   await loadLeaderboard();
+  await loadAdminPhotoList();
 }
 
 async function adminLogout() {
@@ -552,6 +833,12 @@ async function adminSetStatus(action) {
 
 function bindEvents() {
   document.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
+  document.querySelectorAll('.photo-category').forEach(btn => btn.addEventListener('click', () => setPhotoCategory(btn.dataset.photoCategory)));
+  $('photoUploadBtn').addEventListener('click', uploadPhoto);
+  $('refreshPhotosBtn').addEventListener('click', loadPhotos);
+  $('photoLightboxClose').addEventListener('click', closePhotoLightbox);
+  $('photoLightbox').addEventListener('click', (e) => { if (e.target === $('photoLightbox')) closePhotoLightbox(); });
+  $('adminRefreshPhotosBtn').addEventListener('click', loadAdminPhotoList);
   $('courseSelect').addEventListener('change', updateCourseInfo);
   $('startRoundBtn').addEventListener('click', () => openPlayerRound().catch(err => setMessage($('setupMessage'), err.message, 'error')));
   $('submitRoundBtn').addEventListener('click', () => submitActiveRound().catch(err => setMessage($('roundMessage'), err.message, 'error')));
@@ -581,11 +868,13 @@ async function init() {
       state.admin = true;
       $('adminLoginPanel').classList.add('hidden');
       $('adminPanel').classList.remove('hidden');
+      await loadAdminPhotoList();
     }
 
     supabase.channel('leaderboard-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'rounds' }, () => loadLeaderboard())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'leaderboard_publication' }, () => loadLeaderboard())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'photos' }, () => { if (document.querySelector('#tab-photos.active')) loadPhotos(); })
       .subscribe();
   } catch (err) {
     console.error(err);

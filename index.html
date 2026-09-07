@@ -18,6 +18,7 @@
 
   <nav class="tabs" aria-label="Hoofdnavigatie">
     <button class="tab active" data-tab="score">Scorekaart</button>
+    <button class="tab" data-tab="photos">Foto's</button>
     <button class="tab" data-tab="leaderboard">Klassement</button>
     <button class="tab" data-tab="admin">Wedstrijdleiding</button>
   </nav>
@@ -65,6 +66,55 @@
           <button id="closeRoundBtn" class="secondary">Sluiten</button>
         </div>
         <p id="roundMessage" class="message" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <section id="tab-photos" class="tab-panel">
+      <div class="panel">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">Gezamenlijk fotoalbum</div>
+            <h2>Foto's</h2>
+          </div>
+          <button id="refreshPhotosBtn" class="secondary small" type="button">Vernieuwen</button>
+        </div>
+
+        <div class="photo-category-tabs" role="tablist" aria-label="Fotocategorie">
+          <button type="button" class="photo-category active" data-photo-category="day1">Dag 1 · Jakobsberg</button>
+          <button type="button" class="photo-category" data-photo-category="day2">Dag 2 · Bitburg</button>
+          <button type="button" class="photo-category" data-photo-category="day3">Dag 3 · Lüderich</button>
+          <button type="button" class="photo-category" data-photo-category="classics">Klassiekers</button>
+        </div>
+
+        <div class="photo-upload-box">
+          <div>
+            <div class="eyebrow">Foto toevoegen</div>
+            <h3 id="photoUploadHeading">Dag 1 · Jakobsberg</h3>
+          </div>
+
+          <div class="form-grid photo-form-grid">
+            <label>Naam
+              <select id="photoPlayerSelect"></select>
+            </label>
+            <label>Tekst bij foto, optioneel
+              <input id="photoCaptionInput" type="text" maxlength="120" placeholder="Bijv. birdie op 18">
+            </label>
+            <label>Foto
+              <input id="photoFileInput" type="file" accept="image/*,.heic,.heif">
+            </label>
+          </div>
+
+          <div class="actions">
+            <button id="photoUploadBtn" class="primary" type="button">Foto uploaden</button>
+          </div>
+
+          <p class="muted small-text">Foto's worden vóór upload automatisch verkleind tot maximaal 1600 px en gecomprimeerd. Video's worden niet geaccepteerd.</p>
+          <div class="upload-progress hidden" id="photoUploadProgress"><div id="photoUploadProgressBar"></div></div>
+          <p id="photoUploadMessage" class="message" aria-live="polite"></p>
+        </div>
+
+        <div id="photoGallery" class="photo-gallery"></div>
+        <div id="photoEmptyState" class="photo-empty">Nog geen foto's in deze categorie.</div>
       </div>
     </section>
 
@@ -152,6 +202,19 @@
           </label>
         </div>
 
+        <div id="adminPhotoManager" class="publication-box">
+          <div>
+            <div class="eyebrow">Foto's</div>
+            <h3>Foto's beheren</h3>
+            <p class="muted small-text">De wedstrijdleiding kan uploads verwijderen.</p>
+          </div>
+          <div class="actions">
+            <button id="adminRefreshPhotosBtn" class="secondary small" type="button">Foto-overzicht vernieuwen</button>
+          </div>
+          <div id="adminPhotoList" class="admin-photo-list"></div>
+          <p id="adminPhotoMessage" class="message" aria-live="polite"></p>
+        </div>
+
         <div id="adminCards" class="admin-cards"></div>
       </div>
 
@@ -185,6 +248,15 @@
       </div>
     </section>
   </main>
+
+  <div id="photoLightbox" class="photo-lightbox hidden" role="dialog" aria-modal="true" aria-label="Foto bekijken">
+    <button id="photoLightboxClose" class="lightbox-close" type="button" aria-label="Sluiten">×</button>
+    <img id="photoLightboxImage" alt="">
+    <div class="lightbox-meta">
+      <strong id="photoLightboxTitle"></strong>
+      <span id="photoLightboxCaption"></span>
+    </div>
+  </div>
 
   <script type="module" src="app.js"></script>
 </body>
