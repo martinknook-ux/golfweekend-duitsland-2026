@@ -284,6 +284,21 @@
       font-weight:800;
     }
 
+
+    .sfeer-strip.single-photo{
+      grid-template-columns:1fr;
+    }
+
+    .sfeer-strip.single-photo .sfeer-photo{
+      min-height:220px;
+    }
+
+    @media(max-width:760px){
+      .sfeer-strip.single-photo .sfeer-photo{
+        min-height:190px;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -313,10 +328,8 @@
         </div>
       </div>
 
-      <div class="sfeer-strip">
-        <div class="sfeer-photo classic"><span>Klassiekers</span></div>
+      <div class="sfeer-strip single-photo">
         <div class="sfeer-photo golf"><span>Golf</span></div>
-        <div class="sfeer-photo fun"><span>Woodies</span></div>
       </div>
 
       <div class="music-card">
