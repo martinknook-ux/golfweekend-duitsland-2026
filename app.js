@@ -1,3 +1,5 @@
+import { createClient as createResetClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/+esm';
+
 // Morningwoodies Duitsland 2026
 // Wrapper rond app-core.js
 // Behoudt de fotonaam-fix en voegt birdie-markering toe op de scorekaart.
@@ -174,3 +176,71 @@ document.addEventListener('DOMContentLoaded', async () => {
   await initialisePhotoPlayerFix();
   initialiseBirdieBadges();
 });
+
+
+// Resetfunctie voor wedstrijdleiding
+const resetSupabase = createResetClient(
+  'https://dgoyfhjhaztxppkeympd.supabase.co',
+  'sb_publishable_awV5ijRj4tQH4j23ps7bIQ_JXUdjRzg'
+);
+
+function setResetMessage(text, type = ''){
+  const el = document.getElementById('resetWeekendMessage');
+  if(!el) return;
+  el.textContent = text || '';
+  el.classList.remove('error', 'ok');
+  if(type) el.classList.add(type);
+}
+
+async function resetWeekendData(){
+  const btn = document.getElementById('resetWeekendBtn');
+  if(!btn) return;
+
+  const first = window.confirm(
+    "Weet je zeker dat je alle testscorekaarten en scores wilt wissen? Foto's blijven behouden."
+  );
+  if(!first) return;
+
+  const second = window.confirm(
+    "Laatste controle: dit wist alle wedstrijdscores van alle spelers en verbergt alle gewone klassementen. Doorgaan?"
+  );
+  if(!second) return;
+
+  btn.disabled = true;
+  setResetMessage('Weekenddata wordt gewist...');
+
+  try{
+    const { data: sessionData } = await resetSupabase.auth.getSession();
+    if(!sessionData.session?.user){
+      throw new Error('Geen actieve sessie. Log opnieuw in als wedstrijdleiding.');
+    }
+
+    const { error } = await resetSupabase.rpc('admin_reset_weekend_data');
+    if(error) throw error;
+
+    setResetMessage("Reset voltooid. Scorekaarten en klassementen zijn schoon. Foto's zijn behouden.", 'ok');
+
+    // Vernieuw relevante schermen zonder de pagina direct weg te sturen.
+    const adminRefresh = document.getElementById('adminRefreshBtn');
+    if(adminRefresh) adminRefresh.click();
+
+    const leaderboardRefresh = document.getElementById('refreshLeaderboardBtn');
+    if(leaderboardRefresh) leaderboardRefresh.click();
+
+    setTimeout(() => window.location.reload(), 1200);
+  }catch(err){
+    console.error(err);
+    setResetMessage(err.message || 'Reset is niet gelukt.', 'error');
+    btn.disabled = false;
+  }
+}
+
+function initialiseWeekendReset(){
+  const btn = document.getElementById('resetWeekendBtn');
+  if(btn && btn.dataset.resetBound !== '1'){
+    btn.dataset.resetBound = '1';
+    btn.addEventListener('click', resetWeekendData);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', initialiseWeekendReset);

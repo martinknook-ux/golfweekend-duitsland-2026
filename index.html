@@ -317,6 +317,23 @@
       }
     }
 
+
+    .reset-weekend-box{
+      margin-top:16px;
+      border:1px solid rgba(138,63,63,.25);
+      background:#fffafa;
+    }
+
+    .reset-weekend-box h3{
+      color:#7b3434;
+    }
+
+    .reset-weekend-box #resetWeekendBtn{
+      border-color:#8a3f3f;
+      color:#8a3f3f;
+      background:#fff;
+    }
+
   </style>
 </head>
 <body>
@@ -594,6 +611,22 @@
 
           <div id="adminPhotoList" class="admin-photo-list"></div>
           <p id="adminPhotoMessage" class="message" aria-live="polite"></p>
+        </div>
+
+
+        <div id="resetWeekendBox" class="publication-box reset-weekend-box">
+          <div>
+            <div class="eyebrow">Reset</div>
+            <h3>Klaarzetten voor het echte weekend</h3>
+            <p class="muted small-text">
+              Wist alle testscorekaarten en scores en zet alle gewone klassementen weer op verborgen.
+              Foto's, spelers, banen, holes, muziek en appbestanden blijven behouden.
+            </p>
+          </div>
+          <div class="actions">
+            <button id="resetWeekendBtn" class="secondary small" type="button">Weekenddata resetten</button>
+          </div>
+          <p id="resetWeekendMessage" class="message" aria-live="polite"></p>
         </div>
 
         <div id="adminCards" class="admin-cards"></div>
