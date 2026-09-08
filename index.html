@@ -197,6 +197,64 @@
         min-height:150px;
       }
     }
+
+    .music-card{
+      margin-top:10px;
+      background:var(--green-soft);
+      border-radius:14px;
+      padding:12px 14px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+
+    .music-card .music-text{
+      min-width:0;
+    }
+
+    .music-card .music-title{
+      display:block;
+      color:var(--green);
+      font-weight:800;
+      font-size:15px;
+      margin-bottom:2px;
+    }
+
+    .music-card .music-subtitle{
+      display:block;
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    .music-card button{
+      flex:0 0 auto;
+      min-height:42px;
+      border:1px solid var(--green);
+      background:#fff;
+      color:var(--green);
+      border-radius:11px;
+      padding:9px 13px;
+      font-weight:800;
+      cursor:pointer;
+    }
+
+    .music-card button.playing{
+      background:var(--green);
+      color:#fff;
+    }
+
+    @media(max-width:520px){
+      .music-card{
+        align-items:stretch;
+        flex-direction:column;
+      }
+
+      .music-card button{
+        width:100%;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -230,6 +288,15 @@
         <div class="sfeer-photo classic"><span>Klassiekers</span></div>
         <div class="sfeer-photo golf"><span>Golf</span></div>
         <div class="sfeer-photo fun"><span>Woodies</span></div>
+      </div>
+
+      <div class="music-card">
+        <div class="music-text">
+          <span class="music-title">Golfweekend soundtrack</span>
+          <span class="music-subtitle">Speelt alleen op dit apparaat</span>
+        </div>
+        <button id="weekendMusicBtn" type="button">Muziek aan</button>
+        <audio id="weekendMusic" src="woodies.mp3?v=1" preload="auto"></audio>
       </div>
     </div>
   </section>
@@ -481,6 +548,64 @@
       <span id="photoLightboxCaption"></span>
     </div>
   </div>
+
+
+  <script>
+    let weekendMusicEnabled = false;
+
+    function updateWeekendMusicButton(){
+      const btn = document.getElementById("weekendMusicBtn");
+      if(!btn) return;
+      btn.textContent = weekendMusicEnabled ? "Muziek uit" : "Muziek aan";
+      btn.classList.toggle("playing", weekendMusicEnabled);
+    }
+
+    async function toggleWeekendMusic(){
+      const music = document.getElementById("weekendMusic");
+      if(!music) return;
+
+      if(weekendMusicEnabled){
+        weekendMusicEnabled = false;
+        music.pause();
+        updateWeekendMusicButton();
+        return;
+      }
+
+      weekendMusicEnabled = true;
+      music.volume = 0.55;
+
+      if(music.ended || (Number.isFinite(music.duration) && music.currentTime >= music.duration - 1)){
+        music.currentTime = 0;
+      }
+
+      try{
+        await music.play();
+      }catch(err){
+        console.error(err);
+        weekendMusicEnabled = false;
+        alert("De browser kon de muziek niet starten. Tik nogmaals op de knop.");
+      }
+
+      updateWeekendMusicButton();
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const btn = document.getElementById("weekendMusicBtn");
+      const music = document.getElementById("weekendMusic");
+
+      if(btn) btn.addEventListener("click", toggleWeekendMusic);
+
+      if(music){
+        music.addEventListener("ended", () => {
+          weekendMusicEnabled = false;
+          music.currentTime = 0;
+          updateWeekendMusicButton();
+        });
+      }
+
+      updateWeekendMusicButton();
+    });
+  </script>
 
   <script type="module" src="app.js"></script>
 </body>
