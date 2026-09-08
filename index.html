@@ -6,8 +6,196 @@
   <meta name="theme-color" content="#173b2b">
   <title>Golfweekend Duitsland 2026</title>
   <link rel="stylesheet" href="styles.css">
+
+  <style>
+    /* Sfeeropmaak naar voorbeeld van Slag om Laurabos */
+    .topbar{
+      min-height:260px;
+      padding:48px clamp(18px,5vw,54px) 42px;
+      background:
+        linear-gradient(rgba(23,59,43,.60),rgba(23,59,43,.88)),
+        url("header.jpg") center 46% / cover no-repeat;
+      color:#fff;
+      align-items:flex-end;
+    }
+
+    .topbar > div:first-child{
+      max-width:760px;
+    }
+
+    .topbar .eyebrow{
+      color:#eef5ef;
+      letter-spacing:.12em;
+      font-size:13px;
+    }
+
+    .topbar h1{
+      font-size:clamp(32px,6vw,54px);
+      line-height:1.02;
+      margin-top:8px;
+      text-shadow:0 2px 14px rgba(0,0,0,.22);
+    }
+
+    .topbar .badge{
+      align-self:flex-start;
+      background:rgba(255,255,255,.16);
+      border-color:rgba(255,255,255,.35);
+      backdrop-filter:blur(8px);
+    }
+
+    .weekend-intro{
+      max-width:1100px;
+      margin:-28px auto 0;
+      padding:0 14px;
+      position:relative;
+      z-index:3;
+    }
+
+    .weekend-card{
+      background:#fff;
+      border:1px solid var(--border);
+      border-radius:18px;
+      padding:14px;
+      box-shadow:0 12px 30px rgba(23,59,43,.10);
+    }
+
+    .weekend-summary{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:10px;
+      margin-bottom:12px;
+    }
+
+    .weekend-summary > div{
+      background:var(--green-soft);
+      border-radius:13px;
+      padding:12px 14px;
+    }
+
+    .weekend-summary span{
+      display:block;
+      color:var(--muted);
+      font-size:11px;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      margin-bottom:4px;
+    }
+
+    .weekend-summary strong{
+      color:var(--green);
+      font-size:15px;
+    }
+
+    .sfeer-strip{
+      display:grid;
+      grid-template-columns:1.35fr 1fr 1fr;
+      gap:10px;
+    }
+
+    .sfeer-photo{
+      min-height:150px;
+      border-radius:14px;
+      overflow:hidden;
+      position:relative;
+      background-size:cover;
+      background-position:center;
+    }
+
+    .sfeer-photo.classic{
+      background-image:
+        linear-gradient(rgba(0,0,0,.05),rgba(0,0,0,.34)),
+        url("classic.jpg");
+    }
+
+    .sfeer-photo.golf{
+      background-image:
+        linear-gradient(rgba(0,0,0,.04),rgba(0,0,0,.34)),
+        url("golf.jpg");
+    }
+
+    .sfeer-photo.fun{
+      background-image:
+        linear-gradient(rgba(0,0,0,.04),rgba(0,0,0,.34)),
+        url("fun.jpg");
+    }
+
+    .sfeer-photo span{
+      position:absolute;
+      left:13px;
+      bottom:11px;
+      color:#fff;
+      font-weight:800;
+      font-size:15px;
+      text-shadow:0 2px 8px rgba(0,0,0,.45);
+    }
+
+    .tabs{
+      max-width:1100px;
+      margin:16px auto 0;
+      border:1px solid var(--border);
+      border-radius:16px;
+      box-shadow:0 6px 18px rgba(23,59,43,.05);
+    }
+
+    main{
+      padding-top:16px;
+    }
+
+    @media(max-width:760px){
+      .topbar{
+        min-height:235px;
+        padding:34px 18px 38px;
+      }
+
+      .weekend-intro{
+        margin-top:-22px;
+        padding:0 10px;
+      }
+
+      .weekend-card{
+        padding:10px;
+      }
+
+      .weekend-summary{
+        grid-template-columns:1fr;
+      }
+
+      .sfeer-strip{
+        grid-template-columns:1fr;
+      }
+
+      .sfeer-photo{
+        min-height:175px;
+      }
+
+      .tabs{
+        margin:12px 10px 0;
+        border-radius:14px;
+      }
+    }
+
+    @media(max-width:420px){
+      .topbar{
+        min-height:220px;
+        padding:30px 14px 34px;
+      }
+
+      .topbar h1{
+        max-width:330px;
+      }
+
+      .weekend-summary{
+        display:none;
+      }
+
+      .sfeer-photo{
+        min-height:150px;
+      }
+    }
+  </style>
 </head>
 <body>
+
   <header class="topbar">
     <div>
       <div class="eyebrow">Stableford · 3 dagen · 11 spelers</div>
@@ -15,6 +203,31 @@
     </div>
     <div id="connectionBadge" class="badge">Verbinden...</div>
   </header>
+
+  <section class="weekend-intro" aria-label="Golfweekend sfeer">
+    <div class="weekend-card">
+      <div class="weekend-summary">
+        <div>
+          <span>Dag 1</span>
+          <strong>Jakobsberg Golf Club</strong>
+        </div>
+        <div>
+          <span>Dag 2</span>
+          <strong>Bitburger Land</strong>
+        </div>
+        <div>
+          <span>Dag 3</span>
+          <strong>Golfclub Der Lüderich</strong>
+        </div>
+      </div>
+
+      <div class="sfeer-strip">
+        <div class="sfeer-photo classic"><span>Klassiekers</span></div>
+        <div class="sfeer-photo golf"><span>Golf</span></div>
+        <div class="sfeer-photo fun"><span>Woodies</span></div>
+      </div>
+    </div>
+  </section>
 
   <nav class="tabs" aria-label="Hoofdnavigatie">
     <button class="tab active" data-tab="score">Scorekaart</button>
@@ -58,7 +271,6 @@
             <div><span>Holes</span><strong id="sumHoles">0/18</strong></div>
           </div>
         </div>
-
         <div id="holesGrid" class="holes-grid"></div>
 
         <div class="actions sticky-actions">
@@ -109,7 +321,9 @@
           </div>
 
           <p class="muted small-text">Foto's worden vóór upload automatisch verkleind tot maximaal 1600 px en gecomprimeerd. Video's worden niet geaccepteerd.</p>
-          <div class="upload-progress hidden" id="photoUploadProgress"><div id="photoUploadProgressBar"></div></div>
+          <div class="upload-progress hidden" id="photoUploadProgress">
+            <div id="photoUploadProgressBar"></div>
+          </div>
           <p id="photoUploadMessage" class="message" aria-live="polite"></p>
         </div>
 
@@ -127,10 +341,9 @@
           </div>
           <button id="refreshLeaderboardBtn" class="secondary small">Vernieuwen</button>
         </div>
+
         <p class="muted small-text">De wedstrijdleiding bepaalt wanneer een daguitslag en het weekendklassement zichtbaar worden.</p>
-
         <div id="leaderboardNotice" class="publish-notice"></div>
-
         <div id="dayLeaderboardSections" class="day-leaderboards"></div>
 
         <section id="overallLeaderboardSection" class="leaderboard-section hidden">
@@ -140,6 +353,7 @@
               <h3>Weekendklassement</h3>
             </div>
           </div>
+
           <div class="table-wrap">
             <table>
               <thead>
@@ -163,9 +377,11 @@
       <div id="adminLoginPanel" class="panel">
         <h2>Wedstrijdleiding</h2>
         <p>Voor Arend Heijna en Martin Knook.</p>
+
         <label>Wedstrijdleiding PIN
           <input id="adminPinInput" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN">
         </label>
+
         <div class="actions">
           <button id="adminLoginBtn" class="primary">Inloggen</button>
         </div>
@@ -208,9 +424,11 @@
             <h3>Foto's beheren</h3>
             <p class="muted small-text">De wedstrijdleiding kan uploads verwijderen.</p>
           </div>
+
           <div class="actions">
             <button id="adminRefreshPhotosBtn" class="secondary small" type="button">Foto-overzicht vernieuwen</button>
           </div>
+
           <div id="adminPhotoList" class="admin-photo-list"></div>
           <p id="adminPhotoMessage" class="message" aria-live="polite"></p>
         </div>
@@ -233,6 +451,7 @@
             <input id="adminHandicapInput" type="number" inputmode="decimal" step="0.1" min="-10" max="54">
           </label>
         </div>
+
         <div class="actions">
           <button id="adminStartOrUpdateBtn" class="secondary">Kaart aanmaken / handicap bijwerken</button>
         </div>
