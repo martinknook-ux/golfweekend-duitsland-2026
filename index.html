@@ -255,6 +255,35 @@
       }
     }
 
+
+    .birdie-board{
+      margin-top:18px;
+      border-top:1px solid var(--border);
+      padding-top:18px;
+    }
+
+    .birdie-board h3{
+      margin:3px 0 0;
+      font-size:18px;
+    }
+
+    .birdie-note{
+      margin-top:5px;
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    .birdie-crown{
+      display:inline-flex;
+      align-items:center;
+      border-radius:999px;
+      background:var(--green-soft);
+      color:var(--green);
+      padding:7px 10px;
+      font-size:12px;
+      font-weight:800;
+    }
+
   </style>
 </head>
 <body>
@@ -442,6 +471,36 @@
             </table>
           </div>
         </section>
+
+        <section class="birdie-board">
+          <div class="section-head compact-head">
+            <div>
+              <div class="eyebrow">Altijd zichtbaar</div>
+              <h3>Birdieklassement</h3>
+              <div class="birdie-note">Aantal bruto birdies per speler. Een birdie telt bij precies één slag onder par.</div>
+            </div>
+            <span id="birdieLeader" class="birdie-crown">Nog geen birdies</span>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Speler</th>
+                  <th>Jakobsberg</th>
+                  <th>Bitburg</th>
+                  <th>Lüderich</th>
+                  <th>Totaal</th>
+                </tr>
+              </thead>
+              <tbody id="birdieLeaderboardBody">
+                <tr><td colspan="6">Birdieklassement laden...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p id="birdieMessage" class="muted small-text"></p>
+        </section>
       </div>
     </section>
 
@@ -608,5 +667,85 @@
   </script>
 
   <script type="module" src="app.js"></script>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/+esm';
+
+    const birdieSupabase = createClient(
+      'https://dgoyfhjhaztxppkeympd.supabase.co',
+      'sb_publishable_awV5ijRj4tQH4j23ps7bIQ_JXUdjRzg'
+    );
+
+    function birdieEsc(value){
+      return String(value ?? '').replace(/[&<>'"]/g, ch => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'
+      }[ch]));
+    }
+
+    async function ensureBirdieSession(){
+      const { data } = await birdieSupabase.auth.getSession();
+      if(data.session?.user) return;
+      const { error } = await birdieSupabase.auth.signInAnonymously();
+      if(error) throw error;
+    }
+
+    async function loadBirdieLeaderboard(){
+      const body = document.getElementById('birdieLeaderboardBody');
+      const leader = document.getElementById('birdieLeader');
+      const msg = document.getElementById('birdieMessage');
+      if(!body || !leader) return;
+
+      try{
+        await ensureBirdieSession();
+        const { data, error } = await birdieSupabase.rpc('get_birdie_leaderboard');
+        if(error) throw error;
+
+        const rows = data || [];
+        if(!rows.length){
+          body.innerHTML = '<tr><td colspan="6">Nog geen birdies geregistreerd.</td></tr>';
+          leader.textContent = 'Nog geen birdies';
+          if(msg) msg.textContent = '';
+          return;
+        }
+
+        body.innerHTML = rows.map((r, i) => `
+          <tr>
+            <td>${i + 1}</td>
+            <td>${birdieEsc(r.player_name)}</td>
+            <td>${Number(r.day1 || 0)}</td>
+            <td>${Number(r.day2 || 0)}</td>
+            <td>${Number(r.day3 || 0)}</td>
+            <td><strong>${Number(r.total || 0)}</strong></td>
+          </tr>
+        `).join('');
+
+        const top = Number(rows[0]?.total || 0);
+        const leaders = rows.filter(r => Number(r.total || 0) === top && top > 0)
+          .map(r => r.player_name);
+
+        leader.textContent = top > 0
+          ? `${leaders.join(', ')} · ${top} birdie${top === 1 ? '' : 's'}`
+          : 'Nog geen birdies';
+
+        if(msg) msg.textContent = 'Wordt bijgewerkt zodra scores worden ingevoerd.';
+      }catch(err){
+        console.error(err);
+        body.innerHTML = '<tr><td colspan="6">Birdieklassement kon niet worden geladen.</td></tr>';
+        if(msg) msg.textContent = err.message || '';
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const tab = document.querySelector('[data-tab="leaderboard"]');
+      if(tab) tab.addEventListener('click', () => setTimeout(loadBirdieLeaderboard, 50));
+
+      const refresh = document.getElementById('refreshLeaderboardBtn');
+      if(refresh) refresh.addEventListener('click', () => setTimeout(loadBirdieLeaderboard, 50));
+
+      loadBirdieLeaderboard();
+      setInterval(loadBirdieLeaderboard, 30000);
+    });
+  </script>
+
 </body>
 </html>
